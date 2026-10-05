@@ -1,0 +1,25 @@
+services:
+  api:
+    build: .
+    image: calibration-service:latest
+    ports:
+      # Host-side port is configurable: API_HOST_PORT=9090 docker compose up -d
+      - "${API_HOST_PORT:-8000}:8000"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import json,urllib.request,sys; info=json.load(urllib.request.urlopen('http://127.0.0.1:8000/health', timeout=2)); sys.exit(0 if info.get('status')=='ok' else 1)"]
+      interval: 5s
+      timeout: 3s
+      retries: 12
+      start_period: 3s
+    restart: unless-stopped
+
+  verify:
+    build: .
+    image: calibration-service:latest
+    depends_on:
+      api:
+        condition: service_healthy
+    environment:
+      API_BASE_URL: "http://api:8000"
+    command: ["python", "scripts/verify.py"]
+    restart: "no"
